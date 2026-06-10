@@ -108,8 +108,20 @@ function projectCard(p) {
 async function renderFeatured(elId) {
   const el = document.getElementById(elId);
   if (!el) return;
+  const band = document.getElementById("hero-band");
   try {
-    const projects = (await getProjects()).filter((p) => p.featured === "yes").slice(0, 4);
+    let projects = (await getProjects()).filter((p) => p.featured === "yes").slice(0, 5);
+    if (band && projects.length) {
+      const b = projects[0];
+      projects = projects.slice(1, 5);
+      band.innerHTML = `
+        <a href="project.html?id=${encodeURIComponent(b.id)}" data-cursor="view →">
+          <div class="frame">
+            <img class="px" src="${imgSrc(b.hero_url || b.thumbnail_url, b.id + "-band", 2000)}" alt="${b.title}" crossorigin="anonymous">
+          </div>
+          <span class="caption">${b.title} — ${(b.category || "").toLowerCase()}${b.year ? " · " + b.year : ""}</span>
+        </a>`;
+    }
     el.innerHTML = projects.length ? projects.map(projectCard).join("") : `<p class="empty">work coming soon.</p>`;
     afterRender();
   } catch {

@@ -7,33 +7,48 @@
   <meta name="description" content="Pixal Prompt is a Mumbai-based AI visual studio. Everyone has the same tool. Not everyone has taste.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Fraunces:ital,opsz,wght,SOFT,WONK@1,9..144,100..900,0..100,0..1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-page="home">
 
   <header>
-    <a class="wordmark" href="index.html">pixal—prompt®</a>
+    <a class="wordmark" href="index.html">Pixal Prompt</a>
     <button class="menu-btn">menu</button>
     <nav>
       <a href="work.html" data-nav="work">work</a>
       <a href="about.html" data-nav="about">about</a>
-      <a href="contact.html" data-nav="contact">contact</a>
+      <a href="contact.html" data-nav="contact" class="talk">let's talk</a>
     </nav>
   </header>
 
   <section class="hero">
-    <div class="meta-chips">
-      <span>[ studio: mumbai ]</span>
-      <span>[ model: taste ]</span>
-      <span>[ denoise: 100% ]</span>
-    </div>
     <p class="prompt-line">&gt; <span class="typed" data-text="everyone has the same tool. not everyone has taste."></span><span class="caret"></span></p>
-    <h1 class="reveal in"><span class="machine">AI visuals</span><span class="soul">with soul.</span></h1>
+    <h1 class="reveal in">
+      <span class="l1">AI Visuals</span>
+      <span class="l2">With <em class="soul">soul.</em></span>
+    </h1>
+    <svg class="squiggle" viewBox="0 0 1400 300" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M -40 70 C 220 10, 340 150, 560 120 S 880 30, 1020 130 C 1120 200, 1240 230, 1440 190" />
+    </svg>
     <div class="hero-foot">
       <span>visual studio — mumbai</span>
-      <span>brand campaigns / product / editorial / r&amp;d</span>
+      <span>est. 2026</span>
     </div>
+  </section>
+
+  <div class="hero-band" id="hero-band"></div>
+
+  <section style="padding: clamp(50px,8vh,110px) 0 0;">
+    <div class="section-head" style="padding: 0 var(--pad); max-width: var(--max); margin: 0 auto clamp(24px,4vh,48px);">
+      <span class="eyebrow">what we make</span>
+    </div>
+    <nav class="cats">
+      <a href="work.html" data-cursor="see work →"><span class="num">01</span><span class="label">Brand Campaigns</span><span class="arrow">→</span></a>
+      <a href="work.html" data-cursor="see work →"><span class="num">02</span><span class="label">Product</span><span class="arrow">→</span></a>
+      <a href="work.html" data-cursor="see work →"><span class="num">03</span><span class="label">Editorial</span><span class="arrow">→</span></a>
+      <a href="work.html" data-cursor="see work →"><span class="num">04</span><span class="label">R&amp;D</span><span class="arrow">→</span></a>
+    </nav>
   </section>
 
   <section class="section">
@@ -48,10 +63,8 @@
   </section>
 
   <section class="section">
-    <div class="section-head">
-      <span class="eyebrow">the studio</span>
-    </div>
-    <p class="statement reveal">AI is the tool. <em>Taste</em> is the work. We build visual worlds with intention — not output.</p>
+    <span class="eyebrow">the studio</span>
+    <p class="statement reveal" style="margin-top: 28px;">AI is the tool. <em>Taste</em> is the work. We build visual worlds with intention — not output.</p>
     <a class="view-all" href="about.html" data-cursor="→">about the studio</a>
   </section>
 
