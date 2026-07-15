@@ -243,6 +243,41 @@ async function renderTeam(elId) {
   }
 }
 
+/* ---------- life with simonelle feed ---------- */
+async function renderSimonelle(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const items = (await fetchTab("Simonelle"))
+      .filter((r) => r.published === "yes" && isRealUrl(r.media_url))
+      .sort((a, b) => (parseInt(a.display_order) || 99) - (parseInt(b.display_order) || 99));
+    if (!items.length) {
+      el.innerHTML = `<p class="empty">coming soon — add rows to the "Simonelle" tab in the sheet.</p>`;
+      return;
+    }
+    el.innerHTML = items.map((r, i) => {
+      const n = String(i + 1).padStart(2, "0");
+      const isVideo = r.media_url.match(/\.(mp4|webm|mov)(\?|$)/i);
+      const media = isVideo
+        ? `<div class="frame-wrap"><div class="frame"><video src="${r.media_url}" muted loop playsinline autoplay></video></div></div>`
+        : framedImg(cdn(r.media_url, 1400), r.caption || "Life with Simonelle");
+      return `
+        <div class="card reveal">
+          <span class="idx">${n}</span>
+          ${media}
+          <div class="cap">
+            ${r.brand ? `<h3>${r.brand}</h3>` : ""}
+            ${r.caption ? `<p class="sub">${r.caption}</p>` : ""}
+            <span class="tag">[ digital reflection${r.date ? " · " + r.date : ""} ]</span>
+          </div>
+        </div>`;
+    }).join("");
+    afterRender();
+  } catch {
+    el.innerHTML = `<p class="empty">coming soon — add a "Simonelle" tab to the sheet.</p>`;
+  }
+}
+
 /* ---------- diffusion reveal ---------- */
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -311,17 +346,63 @@ function observeDiffusion() {
   });
 }
 
-/* ---------- intro gate ---------- */
+/* ---------- intro gate: fog you wipe away with the cursor ---------- */
 function initIntro() {
   const intro = document.getElementById("intro");
   if (!intro) { typeHero(); return; }
   document.body.classList.add("intro-lock");
+
   const close = () => {
     intro.classList.add("done");
     document.body.classList.remove("intro-lock");
     setTimeout(() => { intro.remove(); typeHero(); }, 950);
   };
   intro.addEventListener("click", close, { once: true });
+
+  if (REDUCED) return; // no fog for reduced motion — plain gate
+
+  const c = document.createElement("canvas");
+  c.className = "fog";
+  intro.appendChild(c);
+  const ctx = c.getContext("2d");
+
+  function paintFog() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    ctx.globalCompositeOperation = "source-over";
+    // dense layered smoke over the logo
+    ctx.fillStyle = "rgba(21,19,15,0.92)";
+    ctx.fillRect(0, 0, c.width, c.height);
+    for (let i = 0; i < 170; i++) {
+      const x = Math.random() * c.width;
+      const y = Math.random() * c.height;
+      const r = 60 + Math.random() * 220;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const shade = 150 + Math.random() * 60;
+      g.addColorStop(0, `rgba(${shade},${shade - 6},${shade - 18},${0.05 + Math.random() * 0.09})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = "destination-out";
+  }
+  paintFog();
+  window.addEventListener("resize", paintFog);
+
+  const wipe = (x, y) => {
+    const r = 85;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, "rgba(0,0,0,0.5)");
+    g.addColorStop(0.6, "rgba(0,0,0,0.22)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  intro.addEventListener("pointermove", (e) => wipe(e.clientX, e.clientY));
 }
 
 /* ---------- hero typing (hardened) ---------- */
@@ -429,4 +510,5 @@ document.addEventListener("DOMContentLoaded", () => {
   renderWorkGrid("work-grid", "work-filters");
   renderProject();
   renderTeam("team-grid");
+  renderSimonelle("simonelle-grid");
 });
