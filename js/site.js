@@ -1,6 +1,6 @@
 /* ============================================================
-   PIXAL PROMPT — site engine v2
-   Sheet-driven content · diffusion pixel-reveal · custom cursor
+   PIXAL PROMPT — site engine v6
+   Sheet-driven content · diffusion reveal · intro gate · cursor
    ============================================================ */
 
 /* ----------------- CONFIG — edit these ----------------- */
@@ -52,9 +52,7 @@ async function fetchTab(tab) {
   return rowsToObjects(parseCSV(await res.text()));
 }
 
-/* ---------- image URL resolver with placeholder fallback ----------
-   Real Cloudinary URL  -> optimized delivery
-   Anything else/empty  -> seeded placeholder so the site never looks broken */
+/* ---------- image URL resolver with placeholder fallback ---------- */
 function isRealUrl(u) {
   return u && u.startsWith("http") && !u.includes("your-account") && !u.includes("paste-");
 }
@@ -78,7 +76,7 @@ function toEmbed(url) {
   return url;
 }
 
-/* ---------- framed image with crop marks + diffusion reveal ---------- */
+/* ---------- framed image ---------- */
 function framedImg(src, alt) {
   return `<div class="frame-wrap"><span class="cm"></span><div class="frame"><img class="px" src="${src}" alt="${alt}" loading="lazy" crossorigin="anonymous"></div></div>`;
 }
@@ -94,13 +92,28 @@ async function getProjects() {
   return _projects;
 }
 
-function projectCard(p) {
+const SUBTEXT_POOL = [
+  "world-building over output.",
+  "same tools. different hands.",
+  "built with intention, not iteration counts.",
+  "the brief asked for safe. we declined.",
+  "taste is the only parameter that matters.",
+  "made slowly, on purpose.",
+];
+function subFor(p, i) {
+  if (p.description_short && !p.description_short.includes("One-line")) return p.description_short;
+  return SUBTEXT_POOL[i % SUBTEXT_POOL.length];
+}
+function projectCard(p, i = 0) {
+  const n = String(i + 1).padStart(2, "0");
   return `
     <a class="card reveal" href="project.html?id=${encodeURIComponent(p.id)}" data-cursor="view →">
-      ${framedImg(imgSrc(p.thumbnail_url, p.id + "-thumb", 1200), p.title)}
-      <div class="meta">
+      <span class="idx">${n}</span>
+      ${framedImg(imgSrc(p.thumbnail_url, p.id + "-thumb", 1400), p.title)}
+      <div class="cap">
         <h3>${p.title}</h3>
-        <span class="tag">${(p.category || "").toLowerCase()}${p.year ? " · " + p.year : ""}</span>
+        <p class="sub">${subFor(p, i)}</p>
+        <span class="tag">[ ${(p.category || "work").toLowerCase()}${p.year ? " · " + p.year : ""} ]</span>
       </div>
     </a>`;
 }
@@ -122,7 +135,7 @@ async function renderFeatured(elId) {
           <span class="caption">${b.title} — ${(b.category || "").toLowerCase()}${b.year ? " · " + b.year : ""}</span>
         </a>`;
     }
-    el.innerHTML = projects.length ? projects.map(projectCard).join("") : `<p class="empty">work coming soon.</p>`;
+    el.innerHTML = projects.length ? projects.map((p, i) => projectCard(p, i)).join("") : `<p class="empty">work coming soon.</p>`;
     afterRender();
   } catch {
     el.innerHTML = `<p class="empty">couldn't load work — check the sheet is shared (anyone with link, viewer).</p>`;
@@ -145,11 +158,11 @@ async function renderWorkGrid(elId, filtersId) {
         btn.classList.add("active");
         const cat = btn.dataset.cat;
         const list = cat === "All" ? projects : projects.filter((p) => p.category === cat);
-        el.innerHTML = list.length ? list.map(projectCard).join("") : `<p class="empty">nothing here yet.</p>`;
+        el.innerHTML = list.length ? list.map((p, i) => projectCard(p, i)).join("") : `<p class="empty">nothing here yet.</p>`;
         afterRender();
       });
     }
-    el.innerHTML = projects.length ? projects.map(projectCard).join("") : `<p class="empty">work coming soon.</p>`;
+    el.innerHTML = projects.length ? projects.map((p, i) => projectCard(p, i)).join("") : `<p class="empty">work coming soon.</p>`;
     afterRender();
   } catch {
     el.innerHTML = `<p class="empty">couldn't load work — check the sheet is shared (anyone with link, viewer).</p>`;
@@ -165,7 +178,7 @@ async function renderProject() {
     const projects = await getProjects();
     const p = projects.find((x) => x.id === id);
     if (!p) {
-      wrap.innerHTML = `<p class="empty">project not found. <a href="work.html" style="color:var(--blue)">back to work →</a></p>`;
+      wrap.innerHTML = `<p class="empty">project not found. <a href="work.html" style="color:var(--accent)">back to work →</a></p>`;
       return;
     }
     document.title = `${p.title} — Pixal Prompt`;
@@ -202,14 +215,15 @@ async function renderProject() {
   }
 }
 
-/* ---------- team ---------- */
+/* ---------- team (display_order 1 sits in the CENTER) ---------- */
 async function renderTeam(elId) {
   const el = document.getElementById(elId);
   if (!el) return;
   try {
-    const team = (await fetchTab("Team"))
+    let team = (await fetchTab("Team"))
       .filter((t) => t.active === "yes" && t.name && !t.name.includes("Member Name"))
       .sort((a, b) => (parseInt(a.display_order) || 99) - (parseInt(b.display_order) || 99));
+    if (team.length === 3) team = [team[1], team[0], team[2]];
     el.innerHTML = team.length
       ? team.map((t) => `
         <div class="team-card reveal">
@@ -229,10 +243,7 @@ async function renderTeam(elId) {
   }
 }
 
-/* ============================================================
-   DIFFUSION REVEAL — images resolve from pixelated to sharp,
-   the way a diffusion model denoises. The site's signature.
-   ============================================================ */
+/* ---------- diffusion reveal ---------- */
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function drawCover(ctx, img, w, h) {
@@ -300,22 +311,41 @@ function observeDiffusion() {
   });
 }
 
-/* ---------- hero typing ---------- */
+/* ---------- intro gate ---------- */
+function initIntro() {
+  const intro = document.getElementById("intro");
+  if (!intro) { typeHero(); return; }
+  document.body.classList.add("intro-lock");
+  const close = () => {
+    intro.classList.add("done");
+    document.body.classList.remove("intro-lock");
+    setTimeout(() => { intro.remove(); typeHero(); }, 950);
+  };
+  intro.addEventListener("click", close, { once: true });
+}
+
+/* ---------- hero typing (hardened) ---------- */
 function typeHero() {
   const el = document.querySelector(".prompt-line .typed");
-  if (!el) return;
+  if (!el || el.dataset.done) return;
+  el.dataset.done = "1";
+  const caret = document.querySelector(".prompt-line .caret");
   const text = el.dataset.text || "";
-  if (REDUCED) { el.textContent = text; return; }
+  const finish = () => {
+    el.textContent = text;
+    if (caret) setTimeout(() => caret.classList.add("off"), 1600);
+  };
+  if (REDUCED || !text) { finish(); return; }
   el.textContent = "";
   let i = 0;
+  let stalled = setTimeout(finish, text.length * 90 + 2500); // hard fallback: always completes
   const tick = () => {
-    if (i <= text.length) {
-      el.textContent = text.slice(0, i);
-      i++;
-      setTimeout(tick, 36 + Math.random() * 48);
-    }
+    if (i > text.length) { clearTimeout(stalled); finish(); return; }
+    el.textContent = text.slice(0, i);
+    i++;
+    setTimeout(tick, 36 + Math.random() * 48);
   };
-  setTimeout(tick, 400);
+  setTimeout(tick, 350);
 }
 
 /* ---------- custom cursor ---------- */
@@ -393,7 +423,7 @@ function initNav() {
 document.addEventListener("DOMContentLoaded", () => {
   initNav();
   initCursor();
-  typeHero();
+  initIntro();
   afterRender();
   renderFeatured("featured-grid");
   renderWorkGrid("work-grid", "work-filters");
