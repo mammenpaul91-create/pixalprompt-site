@@ -358,7 +358,7 @@ function observeDiffusion() {
   });
 }
 
-/* ---------- intro gate: living volumetric mist, parts around the cursor ---------- */
+/* ---------- intro gate: the logo sits INSIDE a living cloud ---------- */
 function initIntro() {
   const intro = document.getElementById("intro");
   if (!intro) { typeHero(); return; }
@@ -372,61 +372,73 @@ function initIntro() {
   };
   intro.addEventListener("click", close, { once: true });
 
-  if (REDUCED) return; // plain gate for reduced motion
+  if (REDUCED) return;
 
-  const c = document.createElement("canvas");
-  c.className = "fog";
-  intro.appendChild(c);
-  const ctx = c.getContext("2d");
+  // two layers: mist behind the logo, mist in front of it
+  const back = document.createElement("canvas");
+  back.className = "fog fog-back";
+  const front = document.createElement("canvas");
+  front.className = "fog fog-front";
+  intro.prepend(back);
+  intro.appendChild(front);
+  const bctx = back.getContext("2d");
+  const fctx = front.getContext("2d");
   let W, H, CX, CY;
-  const size = () => { W = c.width = window.innerWidth; H = c.height = window.innerHeight; CX = W / 2; CY = H / 2; };
+  const size = () => {
+    W = back.width = front.width = window.innerWidth;
+    H = back.height = front.height = window.innerHeight;
+    CX = W / 2; CY = H / 2;
+  };
   size();
   window.addEventListener("resize", size);
 
-  // pre-render one soft puff sprite
-  const puff = document.createElement("canvas");
-  puff.width = puff.height = 256;
-  const pctx = puff.getContext("2d");
-  const pg = pctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  pg.addColorStop(0, "rgba(205,198,184,0.55)");
-  pg.addColorStop(0.45, "rgba(180,173,158,0.22)");
-  pg.addColorStop(1, "rgba(0,0,0,0)");
-  pctx.fillStyle = pg;
-  pctx.fillRect(0, 0, 256, 256);
+  // sprites: lit puff + shadow puff (clouds are light on top, dark underneath)
+  const makeSprite = (r, g, b, a) => {
+    const s = document.createElement("canvas");
+    s.width = s.height = 256;
+    const sc = s.getContext("2d");
+    const gr = sc.createRadialGradient(128, 118, 0, 128, 128, 128);
+    gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+    gr.addColorStop(0.55, `rgba(${r},${g},${b},${a * 0.35})`);
+    gr.addColorStop(1, "rgba(0,0,0,0)");
+    sc.fillStyle = gr;
+    sc.fillRect(0, 0, 256, 256);
+    return s;
+  };
+  const lit = makeSprite(226, 219, 205, 0.5);
+  const shadow = makeSprite(38, 33, 26, 0.55);
+  const ember = makeSprite(188, 74, 28, 0.22);
 
-  // warm ember puff (brand accent, used sparingly)
-  const ember = document.createElement("canvas");
-  ember.width = ember.height = 256;
-  const ectx = ember.getContext("2d");
-  const eg = ectx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  eg.addColorStop(0, "rgba(188,74,28,0.30)");
-  eg.addColorStop(0.5, "rgba(150,60,24,0.10)");
-  eg.addColorStop(1, "rgba(0,0,0,0)");
-  ectx.fillStyle = eg;
-  ectx.fillRect(0, 0, 256, 256);
-
-  // particles: 3 depth layers, gaussian-clustered around the logo
-  const rnd = () => (Math.random() + Math.random() + Math.random()) / 3 - 0.5; // ~gaussian
+  // billowy cloud: several clusters around the logo, not one blob
+  const rnd = () => (Math.random() + Math.random() + Math.random()) / 3 - 0.5;
+  const clusters = [
+    { x: 0, y: 0, s: 1 },
+    { x: -0.16, y: 0.06, s: 0.8 },
+    { x: 0.15, y: -0.05, s: 0.85 },
+    { x: 0.04, y: 0.12, s: 0.7 },
+    { x: -0.07, y: -0.11, s: 0.65 },
+  ];
   const P = [];
-  const COUNT = 110;
-  for (let i = 0; i < COUNT; i++) {
-    const layer = i % 3; // 0 far, 1 mid, 2 near
-    const spread = [0.30, 0.42, 0.55][layer];
-    const hx = CX + rnd() * W * spread;
-    const hy = CY + rnd() * H * spread * 1.15;
-    P.push({
-      hx, hy, x: hx, y: hy,
-      r: [220, 150, 95][layer] * (0.7 + Math.random() * 0.8),
-      a: [0.34, 0.5, 0.62][layer] * (0.7 + Math.random() * 0.6),
-      vx: 0, vy: 0,
-      drift: 0.12 + Math.random() * 0.3,
-      ph: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 0.0012,
-      layer,
-      warm: Math.random() < 0.07,
-      fade: 1,
-    });
-  }
+  const make = (layer, count) => {
+    for (let i = 0; i < count; i++) {
+      const cl = clusters[Math.floor(Math.random() * clusters.length)];
+      const hx = CX + cl.x * W + rnd() * W * 0.13 * cl.s;
+      const hy = CY + cl.y * H + rnd() * H * 0.16 * cl.s;
+      P.push({
+        hx, hy, x: hx, y: hy,
+        r: (34 + Math.random() * 105) * cl.s * (layer === "front" ? 0.85 : 1),
+        a: (layer === "front" ? 0.5 : 0.62) * (0.6 + Math.random() * 0.5),
+        vx: 0, vy: 0,
+        drift: 0.15 + Math.random() * 0.35,
+        ph: Math.random() * Math.PI * 2,
+        warm: Math.random() < 0.05,
+        fade: 1,
+        layer,
+      });
+    }
+  };
+  make("back", 150);
+  make("front", 70);
 
   let mx = -9999, my = -9999;
   intro.addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
@@ -434,42 +446,38 @@ function initIntro() {
 
   let t = 0;
   function frame() {
-    t += 0.008;
-    ctx.clearRect(0, 0, W, H);
-    // faint base veil so edges aren't empty
-    ctx.fillStyle = "rgba(21,19,15,0.35)";
-    ctx.fillRect(0, 0, W, H);
-
+    t += 0.007;
+    bctx.clearRect(0, 0, W, H);
+    fctx.clearRect(0, 0, W, H);
     for (const p of P) {
-      // slow orbital drift around home (volumetric breathing)
-      p.ph += p.spin + 0.004 * p.drift;
-      const ox = Math.cos(p.ph) * 26 * p.drift + Math.cos(t * p.drift * 2) * 10;
-      const oy = Math.sin(p.ph * 0.9) * 20 * p.drift + Math.sin(t * p.drift * 1.6) * 8;
+      p.ph += 0.004 * p.drift;
+      const ox = Math.cos(p.ph) * 20 * p.drift + Math.cos(t * p.drift * 2) * 8;
+      const oy = Math.sin(p.ph * 0.9) * 15 * p.drift + Math.sin(t * p.drift * 1.7) * 6;
 
-      // cursor repulsion — mist parts, then heals
       const dx = p.x - mx, dy = p.y - my;
       const d = Math.hypot(dx, dy);
-      const R = 240;
+      const R = 230;
       if (d < R && d > 0.01) {
-        const f = (1 - d / R) * 3.2;
+        const f = (1 - d / R) * 3.4;
         p.vx += (dx / d) * f;
         p.vy += (dy / d) * f;
-        p.fade = Math.max(0.06, p.fade - (1 - d / R) * 0.10);
+        p.fade = Math.max(0.05, p.fade - (1 - d / R) * 0.11);
       }
-      p.fade += (1 - p.fade) * 0.015; // fog slowly re-forms
-
-      // spring back to home
+      p.fade += (1 - p.fade) * 0.014;
       p.vx += (p.hx - p.x) * 0.004;
       p.vy += (p.hy - p.y) * 0.004;
-      p.vx *= 0.90; p.vy *= 0.90;
+      p.vx *= 0.9; p.vy *= 0.9;
       p.x += p.vx; p.y += p.vy;
 
-      const scale = 1 + Math.sin(t * 1.4 * p.drift + p.ph) * 0.08;
-      const rr = p.r * scale;
-      ctx.globalAlpha = p.a * p.fade;
-      ctx.drawImage(p.warm ? ember : puff, p.x + ox - rr, p.y + oy - rr, rr * 2, rr * 2);
+      const rr = p.r * (1 + Math.sin(t * 1.5 * p.drift + p.ph) * 0.08);
+      const ctx2 = p.layer === "front" ? fctx : bctx;
+      // sculpted volume: dark under-shadow, lit body on top
+      ctx2.globalAlpha = p.a * p.fade * 0.8;
+      ctx2.drawImage(shadow, p.x + ox - rr, p.y + oy - rr + rr * 0.22, rr * 2, rr * 2);
+      ctx2.globalAlpha = p.a * p.fade;
+      ctx2.drawImage(p.warm ? ember : lit, p.x + ox - rr, p.y + oy - rr, rr * 2, rr * 2);
     }
-    ctx.globalAlpha = 1;
+    bctx.globalAlpha = fctx.globalAlpha = 1;
     raf = requestAnimationFrame(frame);
   }
   frame();
@@ -617,8 +625,19 @@ function initTrail() {
   window.addEventListener("resize", size);
 
   const pts = [];
+  let last = null;
   document.addEventListener("mousemove", (e) => {
-    pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+    const now = performance.now();
+    const p = { x: e.clientX, y: e.clientY, t: now };
+    if (last) {
+      const d = Math.hypot(p.x - last.x, p.y - last.y);
+      const steps = Math.min(24, Math.floor(d / 5));
+      for (let k = 1; k <= steps; k++) {
+        pts.push({ x: last.x + ((p.x - last.x) * k) / (steps + 1), y: last.y + ((p.y - last.y) * k) / (steps + 1), t: now });
+      }
+    }
+    pts.push(p);
+    last = p;
   });
 
   (function draw() {
@@ -626,16 +645,16 @@ function initTrail() {
     while (pts.length && now - pts[0].t > 550) pts.shift();
     ctx.clearRect(0, 0, c.width, c.height);
     if (pts.length > 2) {
-      for (let i = 1; i < pts.length; i++) {
-        const a = pts[i - 1], b = pts[i];
-        const age = (now - b.t) / 550; // 0 fresh … 1 gone
-        ctx.strokeStyle = `rgba(188, 74, 28, ${(1 - age) * 0.55})`;
-        ctx.lineWidth = 1.6 * (1 - age) + 0.3;
-        ctx.lineCap = "round";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (let i = 1; i < pts.length - 1; i++) {
+        const a = pts[i - 1], b = pts[i], c2 = pts[i + 1];
+        const age = (now - b.t) / 550;
+        ctx.strokeStyle = `rgba(188, 74, 28, ${(1 - age) * 0.6})`;
+        ctx.lineWidth = 1.8 * (1 - age) + 0.4;
         ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        // smooth through midpoints
-        ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        ctx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+        ctx.quadraticCurveTo(b.x, b.y, (b.x + c2.x) / 2, (b.y + c2.y) / 2);
         ctx.stroke();
       }
     }

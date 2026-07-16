@@ -58,8 +58,9 @@ a { color: inherit; text-decoration: none; }
 #intro canvas.fog {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
-  z-index: 2;
 }
+#intro canvas.fog-back { z-index: 0; }
+#intro canvas.fog-front { z-index: 2; }
 #intro .enter {
   font-family: var(--font-mono);
   font-size: 12px;
