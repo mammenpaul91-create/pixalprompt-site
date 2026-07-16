@@ -121,12 +121,24 @@ function projectCard(p, i = 0) {
     </a>`;
 }
 
+function fillInlineThumbs(projects) {
+  document.querySelectorAll(".inline-thumb").forEach((slot) => {
+    if (slot.dataset.filled) return;
+    const p = projects[parseInt(slot.dataset.thumb) || 0];
+    if (!p) return;
+    slot.dataset.filled = "1";
+    slot.innerHTML = `<img src="${imgSrc(p.thumbnail_url, p.id + "-inline", 400)}" alt="${p.title}" loading="lazy">`;
+  });
+}
+
 async function renderFeatured(elId) {
   const el = document.getElementById(elId);
   if (!el) return;
   const band = document.getElementById("hero-band");
   try {
-    const projects = (await getProjects()).filter((p) => p.featured === "yes").slice(0, 4);
+    const all = await getProjects();
+    fillInlineThumbs(all);
+    const projects = all.filter((p) => p.featured === "yes").slice(0, 4);
     if (band) {
       const m = CONFIG.HERO_MEDIA || "";
       const isVideo = m.match(/\.(mp4|webm|mov)(\?|$)/i);
@@ -147,6 +159,7 @@ async function renderWorkGrid(elId, filtersId) {
   if (!el) return;
   try {
     const projects = await getProjects();
+    fillInlineThumbs(projects);
     const cats = ["All", ...new Set(projects.map((p) => p.category).filter(Boolean))];
     if (filtersEl) {
       filtersEl.innerHTML = cats.map((c, i) => `<button class="${i === 0 ? "active" : ""}" data-cat="${c}">${c}</button>`).join("");
@@ -525,6 +538,12 @@ function plxFrame() {
     const r = p.el.getBoundingClientRect();
     if (r.bottom < -200 || r.top > vh + 200) continue;
     const progress = (r.top + r.height / 2 - vh / 2) / (vh / 2); // -1 top … 1 bottom
+    if (p.mode === "words") {
+      const prog = Math.min(1, Math.max(0, (vh * 0.88 - r.top) / (vh * 0.55)));
+      const lit = Math.floor(prog * p.words.length);
+      p.words.forEach((w, wi) => w.classList.toggle("lit", wi < lit));
+      continue;
+    }
     if (p.mode === "band") {
       const t = Math.min(1, Math.max(0, 1 - Math.abs(progress)));
       const scale = 1.12 - 0.12 * t;
@@ -538,8 +557,32 @@ function onScrollPlx() {
   if (!_plxTicking) { _plxTicking = true; requestAnimationFrame(plxFrame); }
 }
 
+function splitStatements() {
+  document.querySelectorAll(".statement.scrub").forEach((st) => {
+    if (st.dataset.split) return;
+    st.dataset.split = "1";
+    const wrapWords = (node) => {
+      if (node.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        node.textContent.split(/(\s+)/).forEach((tok) => {
+          if (/^\s+$/.test(tok) || tok === "") { frag.appendChild(document.createTextNode(tok)); }
+          else { const s = document.createElement("span"); s.className = "w"; s.textContent = tok; frag.appendChild(s); }
+        });
+        node.replaceWith(frag);
+      } else if (node.nodeType === 1 && node.tagName === "EM") {
+        node.classList.add("w");
+      } else if (node.nodeType === 1) {
+        [...node.childNodes].forEach(wrapWords);
+      }
+    };
+    [...st.childNodes].forEach(wrapWords);
+    _plx.push({ el: st, mode: "words", words: [...st.querySelectorAll(".w")] });
+  });
+}
+
 function initAlive() {
   if (REDUCED) return;
+  splitStatements();
   window.addEventListener("scroll", onScrollPlx, { passive: true });
   window.addEventListener("resize", onScrollPlx);
   onScrollPlx();
