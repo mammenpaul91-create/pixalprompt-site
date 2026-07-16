@@ -665,3 +665,25 @@ footer .foot-row a:hover { color: var(--paper); }
   transition: opacity 0.35s var(--ease);
 }
 .statement.scrub .w.lit { opacity: 1; }
+
+
+/* ---------- new-age cursor: hide native, dot + fading trail ---------- */
+@media (hover: hover) and (pointer: fine) {
+  body, a, button, input, textarea, select, label { cursor: none !important; }
+}
+.trail {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ---------- living smoke drifting over the hero type ---------- */
+.hero { position: relative; }
+.hero-smoke {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.hero h1 { z-index: 1; }

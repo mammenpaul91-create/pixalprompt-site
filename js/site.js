@@ -605,6 +605,115 @@ function initAlive() {
   })();
 }
 
+/* ---------- cursor trail: clean stroke that dissolves ---------- */
+function initTrail() {
+  if (REDUCED || window.matchMedia("(hover: none)").matches) return;
+  const c = document.createElement("canvas");
+  c.className = "trail";
+  document.body.appendChild(c);
+  const ctx = c.getContext("2d");
+  const size = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
+  size();
+  window.addEventListener("resize", size);
+
+  const pts = [];
+  document.addEventListener("mousemove", (e) => {
+    pts.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+  });
+
+  (function draw() {
+    const now = performance.now();
+    while (pts.length && now - pts[0].t > 550) pts.shift();
+    ctx.clearRect(0, 0, c.width, c.height);
+    if (pts.length > 2) {
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const age = (now - b.t) / 550; // 0 fresh … 1 gone
+        ctx.strokeStyle = `rgba(188, 74, 28, ${(1 - age) * 0.55})`;
+        ctx.lineWidth = 1.6 * (1 - age) + 0.3;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        // smooth through midpoints
+        ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+        ctx.stroke();
+      }
+    }
+    requestAnimationFrame(draw);
+  })();
+}
+
+/* ---------- living smoke drifting across the hero headline ---------- */
+function initHeroSmoke() {
+  if (REDUCED) return;
+  const hero = document.querySelector(".hero");
+  if (!hero) return;
+  const c = document.createElement("canvas");
+  c.className = "hero-smoke";
+  hero.appendChild(c);
+  const ctx = c.getContext("2d");
+  let W, H;
+  const size = () => {
+    const r = hero.getBoundingClientRect();
+    W = c.width = Math.round(r.width);
+    H = c.height = Math.round(r.height);
+  };
+  size();
+  window.addEventListener("resize", size);
+
+  // soft puff sprite tinted toward ink so it reads on paper
+  const puff = document.createElement("canvas");
+  puff.width = puff.height = 256;
+  const pctx = puff.getContext("2d");
+  const pg = pctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  pg.addColorStop(0, "rgba(96,90,79,0.32)");
+  pg.addColorStop(0.5, "rgba(120,113,100,0.14)");
+  pg.addColorStop(1, "rgba(0,0,0,0)");
+  pctx.fillStyle = pg;
+  pctx.fillRect(0, 0, 256, 256);
+
+  const pale = document.createElement("canvas");
+  pale.width = pale.height = 256;
+  const qctx = pale.getContext("2d");
+  const qg = qctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  qg.addColorStop(0, "rgba(250,247,240,0.5)");
+  qg.addColorStop(0.5, "rgba(246,242,232,0.2)");
+  qg.addColorStop(1, "rgba(0,0,0,0)");
+  qctx.fillStyle = qg;
+  qctx.fillRect(0, 0, 256, 256);
+
+  const P = [];
+  for (let i = 0; i < 26; i++) {
+    P.push({
+      x: Math.random() * 1.2 - 0.1,          // 0..1 across, wraps
+      y: 0.28 + Math.random() * 0.5,          // hugs the headline zone
+      r: 90 + Math.random() * 190,
+      a: 0.22 + Math.random() * 0.3,
+      v: 0.00025 + Math.random() * 0.00055,   // slow horizontal drift
+      bob: Math.random() * Math.PI * 2,
+      bobAmp: 8 + Math.random() * 18,
+      pale: Math.random() < 0.45,
+    });
+  }
+
+  let t = 0;
+  (function frame() {
+    t += 0.006;
+    ctx.clearRect(0, 0, W, H);
+    for (const p of P) {
+      p.x += p.v;
+      if (p.x > 1.15) p.x = -0.15;
+      const x = p.x * W;
+      const y = p.y * H + Math.sin(t * 1.3 + p.bob) * p.bobAmp;
+      const rr = p.r * (1 + Math.sin(t + p.bob) * 0.07);
+      ctx.globalAlpha = p.a * (0.85 + Math.sin(t * 0.9 + p.bob) * 0.15);
+      ctx.drawImage(p.pale ? pale : puff, x - rr, y - rr, rr * 2, rr * 2);
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(frame);
+  })();
+}
+
 /* ---------- custom cursor ---------- */
 let cursorEl;
 function initCursor() {
@@ -682,6 +791,8 @@ function initNav() {
 document.addEventListener("DOMContentLoaded", () => {
   initNav();
   initCursor();
+  initTrail();
+  initHeroSmoke();
   initIntro();
   initAlive();
   afterRender();
