@@ -346,63 +346,121 @@ function observeDiffusion() {
   });
 }
 
-/* ---------- intro gate: fog you wipe away with the cursor ---------- */
+/* ---------- intro gate: living volumetric mist, parts around the cursor ---------- */
 function initIntro() {
   const intro = document.getElementById("intro");
   if (!intro) { typeHero(); return; }
   document.body.classList.add("intro-lock");
 
+  let raf = null;
   const close = () => {
     intro.classList.add("done");
     document.body.classList.remove("intro-lock");
-    setTimeout(() => { intro.remove(); typeHero(); }, 950);
+    setTimeout(() => { if (raf) cancelAnimationFrame(raf); intro.remove(); typeHero(); }, 950);
   };
   intro.addEventListener("click", close, { once: true });
 
-  if (REDUCED) return; // no fog for reduced motion — plain gate
+  if (REDUCED) return; // plain gate for reduced motion
 
   const c = document.createElement("canvas");
   c.className = "fog";
   intro.appendChild(c);
   const ctx = c.getContext("2d");
+  let W, H, CX, CY;
+  const size = () => { W = c.width = window.innerWidth; H = c.height = window.innerHeight; CX = W / 2; CY = H / 2; };
+  size();
+  window.addEventListener("resize", size);
 
-  function paintFog() {
-    c.width = window.innerWidth;
-    c.height = window.innerHeight;
-    ctx.globalCompositeOperation = "source-over";
-    // dense layered smoke over the logo
-    ctx.fillStyle = "rgba(21,19,15,0.92)";
-    ctx.fillRect(0, 0, c.width, c.height);
-    for (let i = 0; i < 170; i++) {
-      const x = Math.random() * c.width;
-      const y = Math.random() * c.height;
-      const r = 60 + Math.random() * 220;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      const shade = 150 + Math.random() * 60;
-      g.addColorStop(0, `rgba(${shade},${shade - 6},${shade - 18},${0.05 + Math.random() * 0.09})`);
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalCompositeOperation = "destination-out";
+  // pre-render one soft puff sprite
+  const puff = document.createElement("canvas");
+  puff.width = puff.height = 256;
+  const pctx = puff.getContext("2d");
+  const pg = pctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  pg.addColorStop(0, "rgba(205,198,184,0.55)");
+  pg.addColorStop(0.45, "rgba(180,173,158,0.22)");
+  pg.addColorStop(1, "rgba(0,0,0,0)");
+  pctx.fillStyle = pg;
+  pctx.fillRect(0, 0, 256, 256);
+
+  // warm ember puff (brand accent, used sparingly)
+  const ember = document.createElement("canvas");
+  ember.width = ember.height = 256;
+  const ectx = ember.getContext("2d");
+  const eg = ectx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  eg.addColorStop(0, "rgba(188,74,28,0.30)");
+  eg.addColorStop(0.5, "rgba(150,60,24,0.10)");
+  eg.addColorStop(1, "rgba(0,0,0,0)");
+  ectx.fillStyle = eg;
+  ectx.fillRect(0, 0, 256, 256);
+
+  // particles: 3 depth layers, gaussian-clustered around the logo
+  const rnd = () => (Math.random() + Math.random() + Math.random()) / 3 - 0.5; // ~gaussian
+  const P = [];
+  const COUNT = 110;
+  for (let i = 0; i < COUNT; i++) {
+    const layer = i % 3; // 0 far, 1 mid, 2 near
+    const spread = [0.30, 0.42, 0.55][layer];
+    const hx = CX + rnd() * W * spread;
+    const hy = CY + rnd() * H * spread * 1.15;
+    P.push({
+      hx, hy, x: hx, y: hy,
+      r: [220, 150, 95][layer] * (0.7 + Math.random() * 0.8),
+      a: [0.34, 0.5, 0.62][layer] * (0.7 + Math.random() * 0.6),
+      vx: 0, vy: 0,
+      drift: 0.12 + Math.random() * 0.3,
+      ph: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.0012,
+      layer,
+      warm: Math.random() < 0.07,
+      fade: 1,
+    });
   }
-  paintFog();
-  window.addEventListener("resize", paintFog);
 
-  const wipe = (x, y) => {
-    const r = 85;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, "rgba(0,0,0,0.5)");
-    g.addColorStop(0.6, "rgba(0,0,0,0.22)");
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  };
-  intro.addEventListener("pointermove", (e) => wipe(e.clientX, e.clientY));
+  let mx = -9999, my = -9999;
+  intro.addEventListener("pointermove", (e) => { mx = e.clientX; my = e.clientY; });
+  intro.addEventListener("pointerleave", () => { mx = my = -9999; });
+
+  let t = 0;
+  function frame() {
+    t += 0.008;
+    ctx.clearRect(0, 0, W, H);
+    // faint base veil so edges aren't empty
+    ctx.fillStyle = "rgba(21,19,15,0.35)";
+    ctx.fillRect(0, 0, W, H);
+
+    for (const p of P) {
+      // slow orbital drift around home (volumetric breathing)
+      p.ph += p.spin + 0.004 * p.drift;
+      const ox = Math.cos(p.ph) * 26 * p.drift + Math.cos(t * p.drift * 2) * 10;
+      const oy = Math.sin(p.ph * 0.9) * 20 * p.drift + Math.sin(t * p.drift * 1.6) * 8;
+
+      // cursor repulsion — mist parts, then heals
+      const dx = p.x - mx, dy = p.y - my;
+      const d = Math.hypot(dx, dy);
+      const R = 240;
+      if (d < R && d > 0.01) {
+        const f = (1 - d / R) * 3.2;
+        p.vx += (dx / d) * f;
+        p.vy += (dy / d) * f;
+        p.fade = Math.max(0.06, p.fade - (1 - d / R) * 0.10);
+      }
+      p.fade += (1 - p.fade) * 0.015; // fog slowly re-forms
+
+      // spring back to home
+      p.vx += (p.hx - p.x) * 0.004;
+      p.vy += (p.hy - p.y) * 0.004;
+      p.vx *= 0.90; p.vy *= 0.90;
+      p.x += p.vx; p.y += p.vy;
+
+      const scale = 1 + Math.sin(t * 1.4 * p.drift + p.ph) * 0.08;
+      const rr = p.r * scale;
+      ctx.globalAlpha = p.a * p.fade;
+      ctx.drawImage(p.warm ? ember : puff, p.x + ox - rr, p.y + oy - rr, rr * 2, rr * 2);
+    }
+    ctx.globalAlpha = 1;
+    raf = requestAnimationFrame(frame);
+  }
+  frame();
 }
 
 /* ---------- hero typing (hardened) ---------- */
