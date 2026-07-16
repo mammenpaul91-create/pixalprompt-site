@@ -256,23 +256,11 @@ header nav a.talk:hover { background: var(--ink); color: var(--paper); }
 
 /* ---------- full-bleed hero band ---------- */
 .hero-band { position: relative; }
-.hero-band a { display: block; position: relative; }
-.hero-band .frame { background: var(--line); overflow: hidden; position: relative; }
-.hero-band img {
+.hero-band .frame { background: var(--ink); overflow: hidden; position: relative; }
+.hero-band img, .hero-band video {
   width: 100%;
-  height: clamp(340px, 72vh, 760px);
+  height: clamp(340px, 78vh, 800px);
   object-fit: cover;
-  filter: grayscale(100%) contrast(1.04);
-  transition: filter 0.7s var(--ease), transform 1.2s var(--ease);
-}
-.hero-band a:hover img { filter: grayscale(0%); transform: scale(1.02); }
-.hero-band .caption {
-  position: absolute; left: var(--pad); bottom: 22px;
-  font-family: var(--font-mono); font-size: 12px;
-  color: var(--paper);
-  background: var(--ink);
-  padding: 6px 12px;
-  z-index: 2;
 }
 
 /* ---------- numbered category rows ---------- */

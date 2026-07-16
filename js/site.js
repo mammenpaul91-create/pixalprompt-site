@@ -8,6 +8,9 @@ const CONFIG = {
   SHEET_ID: "1uQx6yNFHM7pPo7lsjJ4qNgJgOKEs5tE_hUWrOAcyehU",
   EMAIL: "pixalprompt@gmail.com",
   INSTAGRAM: "https://instagram.com/pixalprompt",
+  // Ambient hero band under the headline. NOT clickable, NOT a project.
+  // Swap this for a Cloudinary .mp4 URL to make it a looping film.
+  HERO_MEDIA: "https://res.cloudinary.com/pixalprompt/image/upload/v1781255389/hero-band_nryqal.png",
 };
 /* -------------------------------------------------------- */
 
@@ -123,17 +126,13 @@ async function renderFeatured(elId) {
   if (!el) return;
   const band = document.getElementById("hero-band");
   try {
-    let projects = (await getProjects()).filter((p) => p.featured === "yes").slice(0, 5);
-    if (band && projects.length) {
-      const b = projects[0];
-      projects = projects.slice(1, 5);
-      band.innerHTML = `
-        <a href="project.html?id=${encodeURIComponent(b.id)}" data-cursor="view →">
-          <div class="frame">
-            <img class="px" src="${imgSrc(b.hero_url || b.thumbnail_url, b.id + "-band", 2000)}" alt="${b.title}" crossorigin="anonymous">
-          </div>
-          <span class="caption">${b.title} — ${(b.category || "").toLowerCase()}${b.year ? " · " + b.year : ""}</span>
-        </a>`;
+    const projects = (await getProjects()).filter((p) => p.featured === "yes").slice(0, 4);
+    if (band) {
+      const m = CONFIG.HERO_MEDIA || "";
+      const isVideo = m.match(/\.(mp4|webm|mov)(\?|$)/i);
+      band.innerHTML = isVideo
+        ? `<div class="frame"><video src="${m}" autoplay muted loop playsinline></video></div>`
+        : `<div class="frame"><img class="px" src="${cdn(m, 2200)}" alt="Pixal Prompt" crossorigin="anonymous"></div>`;
     }
     el.innerHTML = projects.length ? projects.map((p, i) => projectCard(p, i)).join("") : `<p class="empty">work coming soon.</p>`;
     afterRender();
@@ -487,6 +486,82 @@ function typeHero() {
   setTimeout(tick, 350);
 }
 
+/* ============================================================
+   ALIVE LAYER — scroll parallax, scrubbed band, mouse drift
+   (vanilla approximation of the full GSAP build in CLAUDE.md)
+   ============================================================ */
+const _plx = [];
+let _plxTicking = false;
+
+function collectParallax() {
+  // work collage: each card frame gets a depth speed by position pattern
+  document.querySelectorAll(".grid .card:not([data-plx-done])").forEach((card, i) => {
+    card.dataset.plxDone = "1";
+    const fw = card.querySelector(".frame-wrap");
+    if (!fw) return;
+    const speeds = [0.05, 0.12, 0.09, 0.14, 0.04];
+    _plx.push({ el: fw, speed: speeds[i % speeds.length], mode: "y" });
+    fw.style.willChange = "transform";
+  });
+  // ghost index numerals drift faster (foreground layer)
+  document.querySelectorAll(".grid .card .idx:not([data-plx-done])").forEach((idx, i) => {
+    idx.dataset.plxDone = "1";
+    _plx.push({ el: idx, speed: -0.08 - (i % 3) * 0.03, mode: "y" });
+    idx.style.willChange = "transform";
+  });
+  // hero band scrub: scale + drift
+  const band = document.querySelector(".hero-band img, .hero-band video");
+  if (band && !band.dataset.plxDone) {
+    band.dataset.plxDone = "1";
+    _plx.push({ el: band, mode: "band" });
+    band.style.willChange = "transform";
+  }
+}
+
+function plxFrame() {
+  _plxTicking = false;
+  const vh = window.innerHeight;
+  for (const p of _plx) {
+    const r = p.el.getBoundingClientRect();
+    if (r.bottom < -200 || r.top > vh + 200) continue;
+    const progress = (r.top + r.height / 2 - vh / 2) / (vh / 2); // -1 top … 1 bottom
+    if (p.mode === "band") {
+      const t = Math.min(1, Math.max(0, 1 - Math.abs(progress)));
+      const scale = 1.12 - 0.12 * t;
+      p.el.style.transform = `scale(${scale.toFixed(4)}) translateY(${(progress * 30).toFixed(1)}px)`;
+    } else {
+      p.el.style.transform = `translateY(${(-progress * p.speed * vh).toFixed(1)}px)`;
+    }
+  }
+}
+function onScrollPlx() {
+  if (!_plxTicking) { _plxTicking = true; requestAnimationFrame(plxFrame); }
+}
+
+function initAlive() {
+  if (REDUCED) return;
+  window.addEventListener("scroll", onScrollPlx, { passive: true });
+  window.addEventListener("resize", onScrollPlx);
+  onScrollPlx();
+
+  // hero mouse drift — type and squiggle lean away from the cursor
+  const h1 = document.querySelector(".hero h1");
+  const sq = document.querySelector(".hero .squiggle");
+  if (!h1) return;
+  let tx = 0, ty = 0, cx = 0, cy = 0;
+  document.addEventListener("mousemove", (e) => {
+    tx = (e.clientX / window.innerWidth - 0.5) * 2;
+    ty = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+  (function drift() {
+    cx += (tx - cx) * 0.045;
+    cy += (ty - cy) * 0.045;
+    h1.style.transform = `translate(${(-cx * 14).toFixed(2)}px, ${(-cy * 8).toFixed(2)}px)`;
+    if (sq) sq.style.transform = `translate(${(-cx * 26).toFixed(2)}px, ${(-cy * 16).toFixed(2)}px)`;
+    requestAnimationFrame(drift);
+  })();
+}
+
 /* ---------- custom cursor ---------- */
 let cursorEl;
 function initCursor() {
@@ -530,6 +605,8 @@ function afterRender() {
   observeReveals();
   bindCursorTargets();
   observeDiffusion();
+  collectParallax();
+  onScrollPlx();
 }
 
 /* ---------- nav / misc ---------- */
@@ -563,6 +640,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initNav();
   initCursor();
   initIntro();
+  initAlive();
   afterRender();
   renderFeatured("featured-grid");
   renderWorkGrid("work-grid", "work-filters");
