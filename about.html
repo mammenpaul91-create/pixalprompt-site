@@ -4,66 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>About — Pixal Prompt</title>
-  <meta name="description" content="Pixal Prompt is a Mumbai-based AI visual studio. AI is the tool. Taste is the work.">
+  <meta name="description" content="Pixal Prompt is a Mumbai AI studio. Everyone samples the same models. We ship what stops thumbs.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fraunces:ital,opsz,wght,SOFT,WONK@1,9..144,100..900,0..100,0..1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/style.css?v=14">
+  <link rel="stylesheet" href="css/latent.css?v=1">
 </head>
 <body data-page="about">
 
   <header>
-    <a class="wordmark" href="index.html"><img src="assets/logo.png" alt="Pixal Prompt"></a>
-    <button class="menu-btn">menu</button>
+    <a class="mark" href="index.html" data-cursor="home"><img src="assets/logo.png" alt="Pixal Prompt"></a>
+    <button class="menu-btn">[ menu ]</button>
     <nav>
       <a href="work.html" data-nav="work">work</a>
+      <a href="reflection.html" data-nav="reflection">reflection</a>
       <a href="about.html" data-nav="about">about</a>
-      <a href="contact.html" data-nav="contact" class="talk">let's talk</a>
+      <a href="contact.html" data-nav="contact" class="cta">[ start a render ]</a>
     </nav>
   </header>
 
-  <section class="section project-hero">
-    <span class="eyebrow">the studio</span>
-    <p class="statement scrub" style="margin-top: 24px;">Everyone has the same tool. <em>Not everyone has taste.</em></p>
-    <p class="project-body" style="margin-top: 40px;">
-      Pixal Prompt is a visual studio based in Mumbai. We make brand campaigns, product films,
-      and editorial work using AI — but the AI was never the point. The same models are available
-      to everyone. What separates the work is everything around the tool: the world-building,
-      the styling, the references, the restraint, the taste. That's what we bring.
-      We build visual worlds with intention. We bring the soul back.
+  <section class="sec page-hero">
+    <span class="eyebrow">[ the studio ]</span>
+    <p class="statement" data-scrub style="margin-top: 24px;">Everyone samples the same models. We ship what <em>stops thumbs.</em></p>
+    <p class="project-body" style="margin-top: 44px; margin-bottom: 0;">
+      Pixal Prompt is an AI studio in Mumbai. We make brand campaigns, product films, editorial
+      work and digital humans — and we fix AI pipelines for teams whose output looks like
+      everyone else's. The models were never the point. What separates the work is everything
+      around them: the direction, the references, the restraint, the taste. That's the part
+      we build.
     </p>
   </section>
 
-  <section class="section" style="text-align: center;">
-    <div class="section-head" style="justify-content: center;">
-      <span class="eyebrow">the people</span>
-      <h2>Who's <em>behind it</em></h2>
+  <section class="sec">
+    <div class="sec-head">
+      <span class="eyebrow">[ the people ]</span>
+      <h2 data-scramble>Operators</h2>
     </div>
     <div class="team-grid" id="team-grid">
-      <p class="loading">loading team…</p>
+      <p class="loading">sampling…</p>
     </div>
   </section>
 
   <footer>
-    <div class="inner">
-      <img class="logo-foot" src="assets/logo.png" alt="Pixal Prompt — creative AI studio, est 2025">
-      <div class="foot-row">
-        <span>© <span data-year></span> Pixal Prompt — Mumbai</span>
-        <div class="links">
-          <a data-email href="#"></a>
-          <a data-instagram href="#" target="_blank" rel="noopener">Instagram</a>
-        </div>
-      </div>
+    <a class="wordmark" href="contact.html">Pixal<br>Prompt</a>
+    <div class="grid">
+      <span>© <span data-year></span> pixal prompt — mumbai</span>
+      <span>sampled, not templated</span>
+      <a data-email href="#" data-cursor="mail"></a>
+      <a data-instagram href="#" target="_blank" rel="noopener" data-cursor="open">instagram ↗</a>
     </div>
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
-  <script src="js/app.js?v=14"></script>
-  <script src="js/data.js?v=14"></script>
-  <script type="module" src="js/gl.js?v=14"></script>
+  <script src="js/latent.js?v=1"></script>
+  <script src="js/data.js?v=1"></script>
+  <script type="module" src="js/gl.js?v=1"></script>
 </body>
 </html>
