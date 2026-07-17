@@ -160,10 +160,119 @@ window.PPGL = { sync: null };
   };
   window.PPGL.sync();
 
+  /* ---------- hero particle field: stateless curl-ish flow,
+     compressed to the core during boot, bursts open on enter,
+     ignites acid→spectral around the cursor ---------- */
+  const FIELD_VERT = /* glsl */ `
+    attribute vec3 aSeed;
+    uniform float uTime;
+    uniform vec2 uRes;
+    uniform vec2 uMouse;
+    uniform float uBoot;
+    varying float vIgnite;
+    varying vec3 vSeed;
+    void main() {
+      vec2 base = aSeed.xy * uRes;
+      float t = uTime * (0.18 + aSeed.z * 0.25);
+      vec2 drift = vec2(
+        sin(t + aSeed.x * 6.2831 + sin(t * 0.7 + aSeed.y * 9.0) * 1.6),
+        cos(t * 0.9 + aSeed.y * 6.2831 + sin(t * 0.6 + aSeed.x * 7.0) * 1.8)
+      ) * (14.0 + aSeed.z * 34.0);
+      vec2 p = base + drift;
+
+      // boot: collapse toward the core with chaos, release on enter
+      vec2 center = uRes * 0.5;
+      vec2 chaos = vec2(
+        sin(uTime * 3.2 + aSeed.x * 43.0),
+        cos(uTime * 2.7 + aSeed.y * 39.0)
+      ) * 70.0 * uBoot;
+      p = mix(p, center + (base - center) * 0.06 + chaos, uBoot);
+
+      // cursor stir: repel + ignite
+      vec2 d = p - uMouse;
+      float dist = length(d);
+      float f = max(0.0, 1.0 - dist / 170.0);
+      p += normalize(d + 0.001) * f * f * 64.0;
+      vIgnite = f;
+      vSeed = aSeed;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p.x, -p.y, -5.0, 1.0);
+      gl_PointSize = 1.0 + aSeed.z * 1.8 + f * 2.2;
+    }
+  `;
+  const FIELD_FRAG = /* glsl */ `
+    precision highp float;
+    varying float vIgnite;
+    varying vec3 vSeed;
+    uniform float uTime;
+    uniform float uFade;
+    void main() {
+      float a = (0.10 + vSeed.z * 0.18) * uFade;
+      vec3 col = vec3(0.55, 0.54, 0.51);
+      vec3 acid = vec3(0.83, 1.0, 0.0);
+      vec3 spec = vec3(
+        0.55 + 0.4 * sin(uTime * 2.0 + vSeed.x * 21.0),
+        0.60 + 0.4 * sin(uTime * 1.7 + vSeed.y * 17.0 + 2.1),
+        1.0
+      );
+      vec3 ig = mix(acid, spec, smoothstep(0.65, 1.0, vIgnite));
+      col = mix(col, ig, smoothstep(0.04, 0.75, vIgnite));
+      a = mix(a, 0.9 * uFade, vIgnite * vIgnite);
+      gl_FragColor = vec4(col, a);
+    }
+  `;
+
+  let field = null;
+  const hero = document.querySelector(".hero");
+  if (hero) {
+    const COUNT = window.innerWidth < 821 ? 12000 : 45000;
+    const seeds = new Float32Array(COUNT * 3);
+    for (let i = 0; i < seeds.length; i++) seeds[i] = Math.random();
+    const fgeo = new THREE.BufferGeometry();
+    fgeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(COUNT * 3), 3));
+    fgeo.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 3));
+    const fmat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: FIELD_VERT,
+      fragmentShader: FIELD_FRAG,
+      uniforms: {
+        uTime: { value: Math.random() * 100 },
+        uRes: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        uMouse: { value: new THREE.Vector2(-9999, -9999) },
+        uBoot: { value: document.getElementById("boot") ? 1 : 0 },
+        uFade: { value: 1 },
+      },
+    });
+    field = new THREE.Points(fgeo, fmat);
+    field.frustumCulled = false;
+    scene.add(field);
+
+    window.addEventListener("resize", () =>
+      fmat.uniforms.uRes.value.set(window.innerWidth, window.innerHeight));
+    window.addEventListener("mousemove", (e) =>
+      fmat.uniforms.uMouse.value.set(e.clientX, e.clientY));
+    document.addEventListener("pp:boot-t", (e) => {
+      fmat.uniforms.uBoot.value = Math.max(fmat.uniforms.uBoot.value * 0.0 + e.detail, 0);
+    });
+    document.addEventListener("pp:boot-done", () => {
+      gsap.to(fmat.uniforms.uBoot, { value: 0, duration: 1.6, ease: "expo.out" });
+    });
+  }
+
   const vh = () => window.innerHeight;
   gsap.ticker.add((time, dt) => {
-    if (!planes.length) return;
+    if (!planes.length && !field) return;
     let any = false;
+    if (field) {
+      const fade = Math.max(0, 1 - window.scrollY / (vh() * 0.9));
+      field.material.uniforms.uFade.value = fade;
+      field.material.uniforms.uTime.value += dt * 0.001;
+      field.visible = fade > 0.02;
+      if (field.visible) any = true;
+    }
     for (const p of planes) {
       const r = p.img.getBoundingClientRect();
       if (r.bottom < -80 || r.top > vh() + 80 || !r.width) {

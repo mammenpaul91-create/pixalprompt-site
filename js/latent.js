@@ -38,12 +38,23 @@ function initBoot() {
     closed = true;
     document.body.classList.remove("boot-lock");
     if (lenis) lenis.start();
+    document.dispatchEvent(new Event("pp:boot-done"));
     gsap.to(boot, {
       autoAlpha: 0,
       scale: 1.02,
       duration: 0.55,
       ease: "power2.inOut",
       onComplete: () => boot.remove(),
+    });
+    // the hero lands as the field bursts open
+    gsap.from(".hero h1, .hero .whisper, .hero .sub", {
+      y: 26,
+      autoAlpha: 0,
+      scale: 1.015,
+      duration: 1.1,
+      stagger: 0.09,
+      ease: "expo.out",
+      clearProps: "all",
     });
     window.removeEventListener("wheel", close);
     window.removeEventListener("keydown", close);
@@ -93,6 +104,7 @@ function initBoot() {
       onUpdate: () => {
         if (tval) tval.textContent = String(Math.round(state.t)).padStart(4, "0");
         if (field) field.style.opacity = (0.16 * state.t) / 1000 + 0.02;
+        document.dispatchEvent(new CustomEvent("pp:boot-t", { detail: state.t / 1000 }));
       },
       onComplete: () => setTimeout(close, 250),
     });
@@ -354,6 +366,24 @@ function bindWordmark() {
   });
 }
 
+/* ---------- hero mouse drift: type and whisper on separate depths ---------- */
+function initHeroDrift() {
+  if (REDUCED || NO_HOVER || !HAS_GSAP) return;
+  const h1 = document.querySelector(".hero h1");
+  const wh = document.querySelector(".hero .whisper");
+  if (!h1) return;
+  const hx = gsap.quickTo(h1, "x", { duration: 0.8, ease: "power3" });
+  const hy = gsap.quickTo(h1, "y", { duration: 0.8, ease: "power3" });
+  const wx = wh && gsap.quickTo(wh, "x", { duration: 1.1, ease: "power3" });
+  const wy = wh && gsap.quickTo(wh, "y", { duration: 1.1, ease: "power3" });
+  document.addEventListener("mousemove", (e) => {
+    const tx = (e.clientX / window.innerWidth - 0.5) * 2;
+    const ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    hx(-tx * 12); hy(-ty * 7);
+    if (wx) { wx(-tx * 22); wy(-ty * 12); }
+  });
+}
+
 /* ---------- grain ---------- */
 function initGrain() {
   if (!document.querySelector(".grain")) {
@@ -387,6 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initScroll();
   initCursor();
   initTrail();
+  initHeroDrift();
   initBoot();
   afterRender();
 });
