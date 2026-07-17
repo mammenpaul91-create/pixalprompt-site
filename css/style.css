@@ -21,6 +21,19 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
+/* Lenis smooth scroll — native smooth-behavior must yield to it */
+html.lenis, html.lenis body { height: auto; }
+html.lenis { scroll-behavior: auto !important; }
+html.lenis-stopped, html.lenis-stopped body { overflow: hidden; }
+
+/* shared WebGL canvas (js/gl.js) */
+.gl-layer {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9500;
+}
+
 body {
   background: var(--paper);
   color: var(--ink);
